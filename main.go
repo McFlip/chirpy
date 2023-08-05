@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,6 +14,11 @@ import (
 type apiConfig struct {
 	fileserverHits int
 }
+type errRes struct {
+	Err string `json:"error"`
+}
+
+const MAX_CHIRP_LEN = 140
 
 func main() {
 	const filepathRoot = "."
@@ -29,6 +35,45 @@ func main() {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.Write([]byte("OK"))
 	})
+	apiRouter.Post("/validate_chirp", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		type parameters struct {
+			Body string `json:"body"`
+		}
+		type validRes struct {
+			Valid string `json:"valid"`
+		}
+		decoder := json.NewDecoder(r.Body)
+		params := parameters{}
+		err := decoder.Decode(&params)
+		if err != nil {
+			log.Printf("Error decoding json body in validate_chirp: %s", err)
+			respondWithErr(w)
+			return
+		}
+		if len(params.Body) > MAX_CHIRP_LEN {
+			resBody := errRes{
+				Err: "Chirp is too long",
+			}
+			dat, err := json.Marshal(resBody)
+			if err != nil {
+				respondWithErr(w)
+				return
+			}
+			w.WriteHeader(400)
+			w.Write(dat)
+			return
+		}
+		resBody := validRes{
+			Valid: "true",
+		}
+		dat, err := json.Marshal(resBody)
+		if err != nil {
+			respondWithErr(w)
+			return
+		}
+		w.Write(dat)
+	})
 	adminRouter := chi.NewRouter()
 	adminRouter.Get("/metrics", apiCfg.handlerMetrics)
 	mainRouter.Mount("/api", apiRouter)
@@ -40,6 +85,18 @@ func main() {
 	}
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	log.Fatal(srv.ListenAndServe())
+}
+
+func respondWithErr(w http.ResponseWriter) {
+	resBody := errRes{
+		Err: "something went wrong",
+	}
+	dat, err := json.Marshal(resBody)
+	if err != nil {
+		log.Printf("Error marshaling json body in respondWithErr: %s", err)
+	}
+	w.WriteHeader(500)
+	w.Write(dat)
 }
 
 func middlewareCors(next http.Handler) http.Handler {
