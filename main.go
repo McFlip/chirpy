@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -18,8 +19,14 @@ type errRes struct {
 	Err string `json:"error"`
 }
 
-const MAX_CHIRP_LEN = 140
+const maxChirpLen = 140
 const genericErrMsg = "Something went wrong"
+
+var forbiddenWords = []string{
+	"kerfuffle",
+	"sharbert",
+	"fornax",
+}
 
 func main() {
 	const filepathRoot = "."
@@ -42,7 +49,7 @@ func main() {
 			Body string `json:"body"`
 		}
 		type validRes struct {
-			Valid bool `json:"valid"`
+			Body string `json:"cleaned_body"`
 		}
 		decoder := json.NewDecoder(r.Body)
 		params := parameters{}
@@ -52,12 +59,13 @@ func main() {
 			respondWithErr(w, 500, genericErrMsg)
 			return
 		}
-		if len(params.Body) > MAX_CHIRP_LEN {
+		if len(params.Body) > maxChirpLen {
 			respondWithErr(w, 400, "Chirp is too long")
 			return
 		}
+		clean := ProfanityFilter(params.Body)
 		resBody := validRes{
-			Valid: true,
+			Body: clean,
 		}
 		respondWithJSON(w, 200, resBody)
 	})
@@ -94,6 +102,18 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	}
 	w.WriteHeader(code)
 	w.Write(dat)
+}
+
+func ProfanityFilter(msg string) string {
+	words := strings.Split(msg, " ")
+	for i, word := range words {
+		for _, forbiddenWord := range forbiddenWords {
+			if strings.ToLower(word) == forbiddenWord {
+				words[i] = "****"
+			}
+		}
+	}
+	return strings.Join(words, " ")
 }
 
 func middlewareCors(next http.Handler) http.Handler {
