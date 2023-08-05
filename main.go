@@ -19,6 +19,7 @@ type errRes struct {
 }
 
 const MAX_CHIRP_LEN = 140
+const genericErrMsg = "Something went wrong"
 
 func main() {
 	const filepathRoot = "."
@@ -41,38 +42,24 @@ func main() {
 			Body string `json:"body"`
 		}
 		type validRes struct {
-			Valid string `json:"valid"`
+			Valid bool `json:"valid"`
 		}
 		decoder := json.NewDecoder(r.Body)
 		params := parameters{}
 		err := decoder.Decode(&params)
 		if err != nil {
 			log.Printf("Error decoding json body in validate_chirp: %s", err)
-			respondWithErr(w)
+			respondWithErr(w, 500, genericErrMsg)
 			return
 		}
 		if len(params.Body) > MAX_CHIRP_LEN {
-			resBody := errRes{
-				Err: "Chirp is too long",
-			}
-			dat, err := json.Marshal(resBody)
-			if err != nil {
-				respondWithErr(w)
-				return
-			}
-			w.WriteHeader(400)
-			w.Write(dat)
+			respondWithErr(w, 400, "Chirp is too long")
 			return
 		}
 		resBody := validRes{
-			Valid: "true",
+			Valid: true,
 		}
-		dat, err := json.Marshal(resBody)
-		if err != nil {
-			respondWithErr(w)
-			return
-		}
-		w.Write(dat)
+		respondWithJSON(w, 200, resBody)
 	})
 	adminRouter := chi.NewRouter()
 	adminRouter.Get("/metrics", apiCfg.handlerMetrics)
@@ -87,15 +74,25 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-func respondWithErr(w http.ResponseWriter) {
+func respondWithErr(w http.ResponseWriter, code int, msg string) {
 	resBody := errRes{
-		Err: "something went wrong",
+		Err: msg,
 	}
 	dat, err := json.Marshal(resBody)
 	if err != nil {
 		log.Printf("Error marshaling json body in respondWithErr: %s", err)
 	}
-	w.WriteHeader(500)
+	w.WriteHeader(code)
+	w.Write(dat)
+}
+
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	dat, err := json.Marshal(payload)
+	if err != nil {
+		respondWithErr(w, 500, genericErrMsg)
+		return
+	}
+	w.WriteHeader(code)
 	w.Write(dat)
 }
 
