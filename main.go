@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -43,31 +44,33 @@ func main() {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.Write([]byte("OK"))
 	})
-	apiRouter.Post("/validate_chirp", func(w http.ResponseWriter, r *http.Request) {
+	apiRouter.Post("/chirps", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		type parameters struct {
 			Body string `json:"body"`
 		}
 		type validRes struct {
-			Body string `json:"cleaned_body"`
+			Id   int    `json:"id"`
+			Body string `json:"body"`
 		}
 		decoder := json.NewDecoder(r.Body)
 		params := parameters{}
 		err := decoder.Decode(&params)
 		if err != nil {
-			log.Printf("Error decoding json body in validate_chirp: %s", err)
+			log.Printf("Error decoding json body in POST chirps: %s", err)
 			respondWithErr(w, 500, genericErrMsg)
 			return
 		}
-		if len(params.Body) > maxChirpLen {
-			respondWithErr(w, 400, "Chirp is too long")
+		validated, err := validateChirp(params.Body)
+		if err != nil {
+			respondWithErr(w, 400, err.Error())
 			return
 		}
-		clean := ProfanityFilter(params.Body)
 		resBody := validRes{
-			Body: clean,
+			Id:   0,
+			Body: validated,
 		}
-		respondWithJSON(w, 200, resBody)
+		respondWithJSON(w, 201, resBody)
 	})
 	adminRouter := chi.NewRouter()
 	adminRouter.Get("/metrics", apiCfg.handlerMetrics)
@@ -102,6 +105,14 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	}
 	w.WriteHeader(code)
 	w.Write(dat)
+}
+
+func validateChirp(chirp string) (validatedChirp string, err error) {
+	if len(chirp) > maxChirpLen {
+		return "", errors.New("Chirp is too long")
+	}
+	clean := ProfanityFilter(chirp)
+	return clean, nil
 }
 
 func ProfanityFilter(msg string) string {
