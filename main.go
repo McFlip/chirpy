@@ -49,7 +49,7 @@ func main() {
 		type parameters struct {
 			Body string `json:"body"`
 		}
-		type validRes struct {
+		type Chirp struct {
 			Id   int    `json:"id"`
 			Body string `json:"body"`
 		}
@@ -66,7 +66,7 @@ func main() {
 			respondWithErr(w, 400, err.Error())
 			return
 		}
-		resBody := validRes{
+		resBody := Chirp{
 			Id:   0,
 			Body: validated,
 		}
