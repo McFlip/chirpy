@@ -41,7 +41,7 @@ func NewDB(path string) (*DB, error) {
 }
 
 // loadDB reads the database file into memory
-func (db *DB) LoadDB() (DBStructure, error) {
+func (db *DB) loadDB() (DBStructure, error) {
 	chirpsJSON := DBStructure{Chirps: map[int]Chirp{}}
 	chirpsSlice := make([]Chirp, 0, 100)
 	db.mux.Lock()
@@ -60,3 +60,24 @@ func (db *DB) LoadDB() (DBStructure, error) {
 	}
 	return chirpsJSON, nil
 }
+
+// writeDB writes the database file to disk
+func (db *DB) writeDB(dbStructure DBStructure) error {
+	chirpsJSON, err := json.Marshal(dbStructure)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(db.path, chirpsJSON, os.FileMode(0666))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// TODO
+// CreateChirp creates a new chirp and saves it to disk
+// func (db *DB) CreateChirp(body string) (Chirp, error)
+
+// TODO
+// GetChirps returns all chirps in the database
+// func (db *DB) GetChirps() ([]Chirp, error)
