@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"srv/internal/database"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -32,25 +33,29 @@ var forbiddenWords = []string{
 func main() {
 	const filepathRoot = "."
 	const port = "8080"
+	const dbPath = "database.json"
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		log.Fatalf("Error connecting to DB: %s", err)
+	}
 	apiCfg := apiConfig{
 		fileserverHits: 0,
 	}
+
 	mainRouter := chi.NewRouter()
 	fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir("."))))
 	mainRouter.Handle("/app", fsHandler)
 	mainRouter.Handle("/app/*", fsHandler)
 	apiRouter := chi.NewRouter()
+
 	apiRouter.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.Write([]byte("OK"))
 	})
+
 	apiRouter.Post("/chirps", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		type parameters struct {
-			Body string `json:"body"`
-		}
-		type Chirp struct {
-			Id   int    `json:"id"`
 			Body string `json:"body"`
 		}
 		decoder := json.NewDecoder(r.Body)
@@ -66,11 +71,12 @@ func main() {
 			respondWithErr(w, 400, err.Error())
 			return
 		}
-		resBody := Chirp{
-			Id:   0,
-			Body: validated,
+		chirp, err := db.CreateChirp(validated)
+		if err != nil {
+			respondWithErr(w, 400, err.Error())
+			return
 		}
-		respondWithJSON(w, 201, resBody)
+		respondWithJSON(w, 201, chirp)
 	})
 	adminRouter := chi.NewRouter()
 	adminRouter.Get("/metrics", apiCfg.handlerMetrics)
@@ -109,7 +115,7 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 
 func validateChirp(chirp string) (validatedChirp string, err error) {
 	if len(chirp) > maxChirpLen {
-		return "", errors.New("Chirp is too long")
+		return "", errors.New("chirp is too long")
 	}
 	clean := ProfanityFilter(chirp)
 	return clean, nil
@@ -151,5 +157,5 @@ func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	// w.Write([]byte(fmt.Sprintf("Hits: %d", cfg.fileserverHits)))
-	fmt.Fprint(w, fmt.Sprintf("<html><body><h1>Welcome, Chirpy Admin</h1><p>Chirpy has been visited %d times!</p></body></html>", cfg.fileserverHits))
+	fmt.Fprintf(w, "<html><body><h1>Welcome, Chirpy Admin</h1><p>Chirpy has been visited %d times!</p></body></html>", cfg.fileserverHits)
 }
