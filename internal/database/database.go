@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"sort"
 	"sync"
 )
 
@@ -98,6 +99,17 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	return myChirp, nil
 }
 
-// TODO
 // GetChirps returns all chirps in the database
-// func (db *DB) GetChirps() ([]Chirp, error)
+func (db *DB) GetChirps() ([]Chirp, error) {
+	chirps := []Chirp{}
+	myDBStructure, err := db.loadDB()
+	if err != nil {
+		fmt.Println("ERROR loading DB in GetChirps")
+		return chirps, err
+	}
+	for _, c := range myDBStructure.Chirps {
+		chirps = append(chirps, c)
+	}
+	sort.Slice(chirps, func(i, j int) bool { return chirps[i].Id < chirps[j].Id })
+	return chirps, nil
+}

@@ -92,3 +92,19 @@ func Test_CreateChirp(t *testing.T) {
 		}
 	}
 }
+
+func Test_GetChirps(t *testing.T) {
+	testDB, err := NewDB("fixture.json")
+	if err != nil {
+		t.Errorf("Failed to create test DB: %s", err)
+	}
+	chirps, err := testDB.GetChirps()
+
+	if len(chirps) != 3 {
+		t.Errorf("Expected 3 chirps but got %d", len(chirps))
+	}
+	const expectedChirp string = "What about second breakfast?"
+	if chirps[1].Body != expectedChirp {
+		t.Errorf("Expected 2nd chirp to be %q, but got %s", expectedChirp, chirps[2].Body)
+	}
+}
