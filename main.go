@@ -73,11 +73,20 @@ func main() {
 		}
 		chirp, err := db.CreateChirp(validated)
 		if err != nil {
-			respondWithErr(w, 400, err.Error())
+			respondWithErr(w, 500, err.Error())
 			return
 		}
 		respondWithJSON(w, 201, chirp)
 	})
+
+	apiRouter.Get("/chirps", func(w http.ResponseWriter, r *http.Request) {
+		chirps, err := db.GetChirps()
+		if err != nil {
+			respondWithErr(w, 500, err.Error())
+		}
+		respondWithJSON(w, 200, chirps)
+	})
+
 	adminRouter := chi.NewRouter()
 	adminRouter.Get("/metrics", apiCfg.handlerMetrics)
 	mainRouter.Mount("/api", apiRouter)
