@@ -1,7 +1,6 @@
 package database
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 	"testing"
@@ -10,10 +9,6 @@ import (
 func Test_createNewFile(t *testing.T) {
 	const path string = "noExist.json"
 	defer os.Remove(path)
-	err := os.Remove(path)
-	if err != nil {
-		fmt.Print(err)
-	}
 	testDB, err := NewDB(path)
 	if err != nil {
 		t.Error(err)
@@ -25,7 +20,7 @@ func Test_createNewFile(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if len(noExistBS) != 0 {
+	if len(noExistBS) != 2 {
 		t.Errorf("Expected length of file to be 0 but it's %d", len(noExistBS))
 	}
 }
@@ -41,7 +36,7 @@ func Test_loadDB(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to unmarshal DB: %s", err)
 	}
-	if testDBStruct.Chirps[0] != expected {
+	if testDBStruct.Chirps[1] != expected {
 		t.Errorf("Expected 0th Chirp to be %#v but received %#v", expected, testDBStruct)
 	}
 }
@@ -54,7 +49,7 @@ func Test_writeDB(t *testing.T) {
 		t.Errorf("Failed to create test DB: %s", err)
 	}
 	testDBStruct := DBStructure{
-		Chirps: map[int]Chirp{0: {Id: 0, Body: "First Chirp!"}, 1: {Id: 1, Body: "Second Chirp."}},
+		Chirps: map[int]Chirp{1: {Id: 1, Body: "First Chirp!"}, 2: {Id: 2, Body: "Second Chirp."}},
 	}
 
 	err = testDB.writeDB(testDBStruct)
@@ -71,6 +66,29 @@ func Test_writeDB(t *testing.T) {
 		}
 		if !match {
 			t.Errorf("%s not found in output:\n%s", expectedChirp, output)
+		}
+	}
+}
+
+func Test_CreateChirp(t *testing.T) {
+	const path string = "createDB.json"
+	defer os.Remove(path)
+	testBody := []string{"First Chirp", "Second Chirp"}
+	testDB, err := NewDB(path)
+	if err != nil {
+		t.Errorf("Failed to create test DB: %s", err)
+	}
+
+	for i, body := range testBody {
+		testChirp, err := testDB.CreateChirp(body)
+		if err != nil {
+			t.Errorf("Failed to create test chirp: %s", err)
+		}
+		if testChirp.Id != i+1 {
+			t.Errorf("Expected ID of %d for testChirp but got %d", i+1, testChirp.Id)
+		}
+		if testChirp.Body != body {
+			t.Errorf("Expected testChirp body to be %q, but got %q", body, testChirp.Body)
 		}
 	}
 }
