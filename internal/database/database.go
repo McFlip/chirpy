@@ -22,20 +22,28 @@ type DB struct {
 
 type DBStructure struct {
 	Chirps map[int]Chirp `json:"chirps"`
+	Users  map[int]User  `json:"users"`
+}
+
+type User struct {
+	Id    int    `json:"id"`
+	Email string `json:"email"`
 }
 
 // ensureDB creates a new database file if it doesn't exist
 func (db *DB) ensureDB() error {
 	file, err := os.Open(db.path)
-	defer file.Close()
-	if errors.Is(err, fs.ErrNotExist) {
-		err = os.WriteFile(db.path, []byte("{}"), 0666)
-		if err != nil {
-			return errors.New("Could not create DB file")
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			err = os.WriteFile(db.path, []byte(`{"chirps":{}, "users":{}}`), 0666)
+			if err != nil {
+				return errors.New("could not create DB file")
+			}
+		} else {
+			return err
 		}
-	} else if err != nil {
-		return err
 	}
+	defer file.Close()
 	return nil
 }
 
@@ -112,4 +120,23 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	}
 	sort.Slice(chirps, func(i, j int) bool { return chirps[i].Id < chirps[j].Id })
 	return chirps, nil
+}
+
+// Create a new user
+func (db *DB) CreateUser(email string) (User, error) {
+	myDBStructure, err := db.loadDB()
+	if err != nil {
+		fmt.Println("ERROR loading DB in CreateUser")
+	}
+
+	myId := len(myDBStructure.Users) + 1
+	myUser := User{Id: myId, Email: email}
+	myDBStructure.Users[myId] = myUser
+	err = db.writeDB(myDBStructure)
+	if err != nil {
+		fmt.Println("ERROR writing to DB in CreateUser")
+		return User{Id: -1, Email: ""}, err
+	}
+
+	return myUser, nil
 }

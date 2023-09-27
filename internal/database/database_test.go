@@ -108,3 +108,23 @@ func Test_GetChirps(t *testing.T) {
 		t.Errorf("Expected 2nd chirp to be %q, but got %s", expectedChirp, chirps[2].Body)
 	}
 }
+
+func Test_CreateUser(t *testing.T) {
+	const path = "users.json"
+	defer os.Remove(path)
+	testDB, err := NewDB(path)
+	if err != nil {
+		t.Errorf("Failed to create test DB: %s", err)
+	}
+	const userEmail = "myuser@local"
+	expected := User{Id: 1, Email: userEmail}
+
+	actual, err := testDB.CreateUser(userEmail)
+	if err != nil {
+		t.Errorf("Failed to create test user: %s", err.Error())
+	}
+
+	if actual != expected {
+		t.Errorf("Expected User %v, but got %v", expected, actual)
+	}
+}
