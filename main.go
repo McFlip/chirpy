@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"srv/internal/database"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -83,8 +84,27 @@ func main() {
 		chirps, err := db.GetChirps()
 		if err != nil {
 			respondWithErr(w, 500, err.Error())
+			return
 		}
 		respondWithJSON(w, 200, chirps)
+	})
+
+	apiRouter.Get("/chirps/{chirpId}", func(w http.ResponseWriter, r *http.Request) {
+		chirps, err := db.GetChirps()
+		if err != nil {
+			respondWithErr(w, 500, err.Error())
+		}
+		chirpId := chi.URLParam(r, "chirpId")
+		chirpIdInt, err := strconv.Atoi(chirpId)
+		if err != nil {
+			respondWithErr(w, 400, err.Error())
+			return
+		}
+		if chirpIdInt <= 0 || chirpIdInt > len(chirps) {
+			respondWithErr(w, 404, "chirp not found")
+			return
+		}
+		respondWithJSON(w, 200, chirps[chirpIdInt-1])
 	})
 
 	adminRouter := chi.NewRouter()
