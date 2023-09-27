@@ -107,6 +107,30 @@ func main() {
 		respondWithJSON(w, 200, chirps[chirpIdInt-1])
 	})
 
+	apiRouter.Post("/users", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		type parameters struct {
+			Email string `json:"email"`
+		}
+		decoder := json.NewDecoder(r.Body)
+		params := parameters{}
+		err := decoder.Decode(&params)
+		if err != nil {
+			log.Printf("Error decoding json body in POST users: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+
+		user, err := db.CreateUser(params.Email)
+		if err != nil {
+			log.Printf("Error creating user in POST users: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+
+		respondWithJSON(w, 201, user)
+	})
+
 	adminRouter := chi.NewRouter()
 	adminRouter.Get("/metrics", apiCfg.handlerMetrics)
 	mainRouter.Mount("/api", apiRouter)

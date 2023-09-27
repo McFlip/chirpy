@@ -20,8 +20,8 @@ func Test_createNewFile(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if len(noExistBS) != 2 {
-		t.Errorf("Expected length of file to be 0 but it's %d", len(noExistBS))
+	if len(noExistBS) != 25 {
+		t.Errorf("Expected length of file to be 25 but it's %d", len(noExistBS))
 	}
 }
 
