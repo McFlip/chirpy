@@ -4,6 +4,8 @@ import (
 	"os"
 	"regexp"
 	"testing"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func Test_createNewFile(t *testing.T) {
@@ -58,6 +60,9 @@ func Test_writeDB(t *testing.T) {
 	}
 
 	output, err := os.ReadFile(path)
+	if err != nil {
+		t.Errorf("Failed to read to DB: %s", err)
+	}
 	expectedChirps := []string{"First Chirp", "Second Chirp"}
 	for _, expectedChirp := range expectedChirps {
 		match, err := regexp.Match(expectedChirp, output)
@@ -99,6 +104,9 @@ func Test_GetChirps(t *testing.T) {
 		t.Errorf("Failed to create test DB: %s", err)
 	}
 	chirps, err := testDB.GetChirps()
+	if err != nil {
+		t.Errorf("Failed to get chirps: %s", err)
+	}
 
 	if len(chirps) != 3 {
 		t.Errorf("Expected 3 chirps but got %d", len(chirps))
@@ -117,14 +125,19 @@ func Test_CreateUser(t *testing.T) {
 		t.Errorf("Failed to create test DB: %s", err)
 	}
 	const userEmail = "myuser@local"
+	const userPassword = "P@ssW0rd"
 	expected := User{Id: 1, Email: userEmail}
 
-	actual, err := testDB.CreateUser(userEmail)
+	actual, err := testDB.CreateUser(userEmail, []byte(userPassword))
 	if err != nil {
 		t.Errorf("Failed to create test user: %s", err.Error())
 	}
 
-	if actual != expected {
+	if actual.Id != expected.Id || actual.Email != expected.Email {
 		t.Errorf("Expected User %v, but got %v", expected, actual)
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(actual.Password), []byte(userPassword))
+	if err != nil {
+		t.Errorf("Password comparison failed: %s", err.Error())
 	}
 }

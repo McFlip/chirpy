@@ -22,6 +22,11 @@ type errRes struct {
 	Err string `json:"error"`
 }
 
+type userRes struct {
+	Id    int    `json:"id"`
+	Email string `json:"email"`
+}
+
 const maxChirpLen = 140
 const genericErrMsg = "Something went wrong"
 
@@ -110,7 +115,8 @@ func main() {
 	apiRouter.Post("/users", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		type parameters struct {
-			Email string `json:"email"`
+			Email    string `json:"email"`
+			Password string `json:"password"`
 		}
 		decoder := json.NewDecoder(r.Body)
 		params := parameters{}
@@ -121,14 +127,18 @@ func main() {
 			return
 		}
 
-		user, err := db.CreateUser(params.Email)
+		user, err := db.CreateUser(params.Email, []byte(params.Password))
 		if err != nil {
 			log.Printf("Error creating user in POST users: %s", err)
 			respondWithErr(w, 500, genericErrMsg)
 			return
 		}
 
-		respondWithJSON(w, 201, user)
+		res := userRes{
+			Id:    user.Id,
+			Email: user.Email,
+		}
+		respondWithJSON(w, 201, res)
 	})
 
 	adminRouter := chi.NewRouter()
