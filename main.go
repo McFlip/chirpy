@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type apiConfig struct {
@@ -29,6 +30,7 @@ type userRes struct {
 
 const maxChirpLen = 140
 const genericErrMsg = "Something went wrong"
+const loginErrMsg = "Incorrect Username or Password"
 
 var forbiddenWords = []string{
 	"kerfuffle",
@@ -139,6 +141,42 @@ func main() {
 			Email: user.Email,
 		}
 		respondWithJSON(w, 201, res)
+	})
+
+	apiRouter.Post("/login", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		type parameters struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+		decoder := json.NewDecoder(r.Body)
+		params := parameters{}
+		err := decoder.Decode(&params)
+		if err != nil {
+			log.Printf("Error decoding json body in POST login: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+
+		user, err := db.GetUserByEmail(params.Email)
+		if err != nil {
+			log.Printf("Error looking up user in POST login: %s", err)
+			respondWithErr(w, 401, loginErrMsg)
+			return
+		}
+
+		err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(params.Password))
+		if err != nil {
+			log.Printf("Error looking up user in POST login: %s", err)
+			respondWithErr(w, 401, loginErrMsg)
+			return
+		}
+
+		res := userRes{
+			Id:    user.Id,
+			Email: user.Email,
+		}
+		respondWithJSON(w, 200, res)
 	})
 
 	adminRouter := chi.NewRouter()
