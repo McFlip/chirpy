@@ -255,11 +255,16 @@ func main() {
 			return
 		}
 
-		// todo: UpdateUser
+		updatedUser, err := db.UpdateUser(subjInt, params.Email, params.Password)
+		if err != nil {
+			log.Printf("Error updating user in DB in PUT users: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
 
 		res := userRes{
-			Id:    subjInt,
-			Email: params.Email,
+			Id:    updatedUser.Id,
+			Email: updatedUser.Email,
 		}
 		respondWithJSON(w, 200, res)
 	})

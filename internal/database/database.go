@@ -175,3 +175,22 @@ func (db *DB) GetUserByEmail(email string) (User, error) {
 	err = errors.New("user not found")
 	return User{Id: -1, Email: ""}, err
 }
+
+func (db *DB) UpdateUser(id int, email string, password string) (User, error) {
+	myDBStructure, err := db.loadDB()
+	if err != nil {
+		fmt.Println("ERROR loading DB in UpdateUser")
+		return User{Id: -1, Email: ""}, err
+	}
+
+	updatedUser := User{Id: id, Password: password, Email: email}
+	myDBStructure.Users[id] = updatedUser
+
+	err = db.writeDB(myDBStructure)
+	if err != nil {
+		fmt.Println("ERROR writing to DB in UpdateUser")
+		return User{Id: -1, Email: ""}, err
+	}
+
+	return updatedUser, nil
+}

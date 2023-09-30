@@ -141,3 +141,27 @@ func Test_CreateUser(t *testing.T) {
 		t.Errorf("Password comparison failed: %s", err.Error())
 	}
 }
+
+func Test_UpdateUser(t *testing.T) {
+	const path = "updateUsers.json"
+	defer os.Remove(path)
+	testDB, err := NewDB(path)
+	if err != nil {
+		t.Errorf("Failed to create test DB: %s", err)
+	}
+	testDB.CreateUser("first@test", []byte("firstPW"))
+	expected := User{
+		Id:       1,
+		Email:    "newemail@test",
+		Password: "newpw",
+	}
+
+	actual, err := testDB.UpdateUser(1, "newemail@test", "newpw")
+	if err != nil {
+		t.Errorf("Failed to update user: %s", err)
+	}
+
+	if actual != expected {
+		t.Errorf("Expected updated user to be %v, but got %v", expected, actual)
+	}
+}
