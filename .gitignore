@@ -25,3 +25,6 @@ tmp/
 
 # Dev DB
 database.json
+
+# Secrets
+.env

@@ -8,16 +8,21 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"srv/internal/database"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type apiConfig struct {
 	fileserverHits int
+	jwtSecret      string
 }
 type errRes struct {
 	Err string `json:"error"`
@@ -26,6 +31,11 @@ type errRes struct {
 type userRes struct {
 	Id    int    `json:"id"`
 	Email string `json:"email"`
+}
+
+type loginRes struct {
+	userRes
+	Token string `json:"token"`
 }
 
 const maxChirpLen = 140
@@ -39,6 +49,12 @@ var forbiddenWords = []string{
 }
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	jwtSecret := os.Getenv("JWT_SECRET")
+
 	const filepathRoot = "."
 	const port = "8080"
 	const dbPath = "database.json"
@@ -48,6 +64,7 @@ func main() {
 	}
 	apiCfg := apiConfig{
 		fileserverHits: 0,
+		jwtSecret:      jwtSecret,
 	}
 
 	mainRouter := chi.NewRouter()
@@ -148,6 +165,7 @@ func main() {
 		type parameters struct {
 			Email    string `json:"email"`
 			Password string `json:"password"`
+			Expires  int    `json:"expires_in_seconds"`
 		}
 		decoder := json.NewDecoder(r.Body)
 		params := parameters{}
@@ -172,9 +190,27 @@ func main() {
 			return
 		}
 
-		res := userRes{
-			Id:    user.Id,
-			Email: user.Email,
+		mySigningKey := []byte(jwtSecret)
+		claims := &jwt.RegisteredClaims{
+			Issuer:    "chirpy",
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * time.Duration(params.Expires))),
+			Subject:   fmt.Sprintf("%d", user.Id),
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		ss, err := token.SignedString(mySigningKey)
+		if err != nil {
+			log.Printf("Error signing JWT in POST login: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+
+		res := loginRes{
+			userRes: userRes{
+				Id:    user.Id,
+				Email: user.Email,
+			},
+			Token: ss,
 		}
 		respondWithJSON(w, 200, res)
 	})
