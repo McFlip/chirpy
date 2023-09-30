@@ -165,7 +165,7 @@ func main() {
 		type parameters struct {
 			Email    string `json:"email"`
 			Password string `json:"password"`
-			Expires  int    `json:"expires_in_seconds"`
+			Expires  int    `json:"expires_in_seconds,omitempty"`
 		}
 		decoder := json.NewDecoder(r.Body)
 		params := parameters{}
@@ -211,6 +211,55 @@ func main() {
 				Email: user.Email,
 			},
 			Token: ss,
+		}
+		respondWithJSON(w, 200, res)
+	})
+
+	apiRouter.Put("/users", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		type parameters struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+		decoder := json.NewDecoder(r.Body)
+		params := parameters{}
+		err := decoder.Decode(&params)
+		if err != nil {
+			log.Printf("Error decoding json body in PUT users: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+		bearer := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		fmt.Printf("%q", bearer)
+
+		claims := jwt.RegisteredClaims{}
+		JWT, err := jwt.ParseWithClaims(bearer, &claims, func(t *jwt.Token) (interface{}, error) {
+			return []byte(jwtSecret), nil
+		})
+		if err != nil {
+			log.Printf("Error parsing claims: %s", err)
+			respondWithErr(w, 401, loginErrMsg)
+			return
+		}
+		subj, err := JWT.Claims.GetSubject()
+		if err != nil {
+			log.Printf("Error getting Subject from JWT claim in PUT users: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+		// log.Printf("Claimed ID is %s", subj)
+		subjInt, err := strconv.Atoi(subj)
+		if err != nil {
+			log.Printf("Error casting JWT subj to int in PUT users: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+
+		// todo: UpdateUser
+
+		res := userRes{
+			Id:    subjInt,
+			Email: params.Email,
 		}
 		respondWithJSON(w, 200, res)
 	})
