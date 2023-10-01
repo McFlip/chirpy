@@ -183,7 +183,13 @@ func (db *DB) UpdateUser(id int, email string, password string) (User, error) {
 		return User{Id: -1, Email: ""}, err
 	}
 
-	updatedUser := User{Id: id, Password: password, Email: email}
+	pw, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		fmt.Println("ERROR hashing pw in CreateUser")
+		return User{Id: -1, Email: ""}, err
+	}
+
+	updatedUser := User{Id: id, Password: string(pw), Email: email}
 	myDBStructure.Users[id] = updatedUser
 
 	err = db.writeDB(myDBStructure)

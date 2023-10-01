@@ -35,12 +35,17 @@ type userRes struct {
 
 type loginRes struct {
 	userRes
-	Token string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"token"`
 }
 
 const maxChirpLen = 140
 const genericErrMsg = "Something went wrong"
 const loginErrMsg = "Incorrect Username or Password"
+const refreshTimeout = time.Hour * 24 * 60
+const refreshIssuer = "chirpy-refresh"
+const accessTimeout = time.Hour
+const accessIssuer = "chirpy-access"
 
 var forbiddenWords = []string{
 	"kerfuffle",
@@ -165,7 +170,6 @@ func main() {
 		type parameters struct {
 			Email    string `json:"email"`
 			Password string `json:"password"`
-			Expires  int    `json:"expires_in_seconds,omitempty"`
 		}
 		decoder := json.NewDecoder(r.Body)
 		params := parameters{}
@@ -191,14 +195,13 @@ func main() {
 		}
 
 		mySigningKey := []byte(jwtSecret)
-		claims := &jwt.RegisteredClaims{
-			Issuer:    "chirpy",
-			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * time.Duration(params.Expires))),
-			Subject:   fmt.Sprintf("%d", user.Id),
+		refreshToken, err := makeJWT(refreshIssuer, refreshTimeout, user.Id, mySigningKey)
+		if err != nil {
+			log.Printf("Error signing JWT in POST login: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
 		}
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		ss, err := token.SignedString(mySigningKey)
+		accessToken, err := makeJWT(accessIssuer, accessTimeout, user.Id, mySigningKey)
 		if err != nil {
 			log.Printf("Error signing JWT in POST login: %s", err)
 			respondWithErr(w, 500, genericErrMsg)
@@ -210,7 +213,8 @@ func main() {
 				Id:    user.Id,
 				Email: user.Email,
 			},
-			Token: ss,
+			RefreshToken: refreshToken,
+			AccessToken:  accessToken,
 		}
 		respondWithJSON(w, 200, res)
 	})
@@ -238,6 +242,17 @@ func main() {
 		})
 		if err != nil {
 			log.Printf("Error parsing claims: %s", err)
+			respondWithErr(w, 401, loginErrMsg)
+			return
+		}
+		iss, err := JWT.Claims.GetIssuer()
+		if err != nil {
+			log.Printf("Error getting Issuer from JWT claim in PUT users: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+		if iss != accessIssuer {
+			log.Printf("Incorrect token used in PUT users: %s", iss)
 			respondWithErr(w, 401, loginErrMsg)
 			return
 		}
@@ -349,4 +364,19 @@ func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	// w.Write([]byte(fmt.Sprintf("Hits: %d", cfg.fileserverHits)))
 	fmt.Fprintf(w, "<html><body><h1>Welcome, Chirpy Admin</h1><p>Chirpy has been visited %d times!</p></body></html>", cfg.fileserverHits)
+}
+
+func makeJWT(issuer string, timout time.Duration, userId int, secret []byte) (string, error) {
+	claims := &jwt.RegisteredClaims{
+		Issuer:    issuer,
+		IssuedAt:  &jwt.NumericDate{Time: time.Now()},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 60)),
+		Subject:   fmt.Sprintf("%d", userId),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	ss, err := token.SignedString(secret)
+	if err != nil {
+		return "", err
+	}
+	return ss, nil
 }
