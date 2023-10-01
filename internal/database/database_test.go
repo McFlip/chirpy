@@ -161,7 +161,13 @@ func Test_UpdateUser(t *testing.T) {
 		t.Errorf("Failed to update user: %s", err)
 	}
 
-	if actual != expected {
-		t.Errorf("Expected updated user to be %v, but got %v", expected, actual)
+	if actual.Email != expected.Email {
+		t.Errorf("Expected updated user email to be %v, but got %v", expected, actual)
 	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(actual.Password), []byte(expected.Password))
+	if err != nil {
+		t.Errorf("Password comparison failed: %s", err.Error())
+	}
+
 }
