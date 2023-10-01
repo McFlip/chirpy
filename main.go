@@ -39,6 +39,10 @@ type loginRes struct {
 	AccessToken  string `json:"token"`
 }
 
+type refreshRes struct {
+	AccessToken string `json:"token"`
+}
+
 const maxChirpLen = 140
 const genericErrMsg = "Something went wrong"
 const loginErrMsg = "Incorrect Username or Password"
@@ -234,7 +238,6 @@ func main() {
 			return
 		}
 		bearer := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		fmt.Printf("%q", bearer)
 
 		claims := jwt.RegisteredClaims{}
 		JWT, err := jwt.ParseWithClaims(bearer, &claims, func(t *jwt.Token) (interface{}, error) {
@@ -282,6 +285,56 @@ func main() {
 			Email: updatedUser.Email,
 		}
 		respondWithJSON(w, 200, res)
+	})
+
+	apiRouter.Post("/refresh", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		bearer := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+
+		claims := jwt.RegisteredClaims{}
+		JWT, err := jwt.ParseWithClaims(bearer, &claims, func(t *jwt.Token) (interface{}, error) {
+			return []byte(jwtSecret), nil
+		})
+		if err != nil {
+			log.Printf("Error parsing claims: %s", err)
+			respondWithErr(w, 401, loginErrMsg)
+			return
+		}
+		iss, err := JWT.Claims.GetIssuer()
+		if err != nil {
+			log.Printf("Error getting Issuer from JWT claim in POST refresh: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+		if iss != refreshIssuer {
+			log.Printf("Incorrect token used in POST refresh: %s", iss)
+			respondWithErr(w, 401, loginErrMsg)
+			return
+		}
+
+		// TODO: check if the token is revoked
+
+		subj, err := JWT.Claims.GetSubject()
+		if err != nil {
+			log.Printf("Error getting Subject from JWT claim in POST refresh: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+		subjInt, err := strconv.Atoi(subj)
+		if err != nil {
+			log.Printf("Error casting JWT subj to int in POST refresh: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+
+		tok, err := makeJWT(accessIssuer, accessTimeout, subjInt, []byte(jwtSecret))
+		if err != nil {
+			log.Printf("Error creating access token in POST refresh: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+
+		respondWithJSON(w, 200, refreshRes{AccessToken: tok})
 	})
 
 	adminRouter := chi.NewRouter()
