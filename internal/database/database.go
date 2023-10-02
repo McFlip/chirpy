@@ -8,6 +8,7 @@ import (
 	"os"
 	"sort"
 	"sync"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -23,8 +24,9 @@ type DB struct {
 }
 
 type DBStructure struct {
-	Chirps map[int]Chirp `json:"chirps"`
-	Users  map[int]User  `json:"users"`
+	Chirps        map[int]Chirp        `json:"chirps"`
+	Users         map[int]User         `json:"users"`
+	RevokedTokens map[string]time.Time `json:"revoked_tokens"`
 }
 
 type User struct {
@@ -38,7 +40,7 @@ func (db *DB) ensureDB() error {
 	file, err := os.Open(db.path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			err = os.WriteFile(db.path, []byte(`{"chirps":{}, "users":{}}`), 0666)
+			err = os.WriteFile(db.path, []byte(`{"chirps":{}, "users":{}, "revoked_tokens":{}}`), 0666)
 			if err != nil {
 				return errors.New("could not create DB file")
 			}
@@ -199,4 +201,32 @@ func (db *DB) UpdateUser(id int, email string, password string) (User, error) {
 	}
 
 	return updatedUser, nil
+}
+
+func (db *DB) TokenIsRevoked(token string) (bool, error) {
+	myDBStructure, err := db.loadDB()
+	if err != nil {
+		fmt.Println("ERROR loading DB in TokenIsRevoked")
+		return false, err
+	}
+
+	_, status := myDBStructure.RevokedTokens[token]
+	return status, nil
+}
+
+func (db *DB) RevokeToken(token string) error {
+	myDBStructure, err := db.loadDB()
+	if err != nil {
+		fmt.Println("ERROR loading DB in RevokeToken")
+		return err
+	}
+
+	myDBStructure.RevokedTokens[token] = time.Now()
+
+	err = db.writeDB(myDBStructure)
+	if err != nil {
+		fmt.Println("ERROR writing to DB in RevokeToken")
+		return err
+	}
+	return nil
 }

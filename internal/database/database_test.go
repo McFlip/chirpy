@@ -4,6 +4,7 @@ import (
 	"os"
 	"regexp"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -22,8 +23,8 @@ func Test_createNewFile(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if len(noExistBS) != 25 {
-		t.Errorf("Expected length of file to be 25 but it's %d", len(noExistBS))
+	if len(noExistBS) != 46 {
+		t.Errorf("Expected length of file to be 46 but it's %d", len(noExistBS))
 	}
 }
 
@@ -170,4 +171,56 @@ func Test_UpdateUser(t *testing.T) {
 		t.Errorf("Password comparison failed: %s", err.Error())
 	}
 
+}
+
+func Test_RevokeToken(t *testing.T) {
+	const testToken = "testtoken"
+	rightMeow := time.Now()
+	const path = "revokeToken.json"
+	defer os.Remove(path)
+	testDB, err := NewDB(path)
+	if err != nil {
+		t.Errorf("Failed to create test DB: %s", err)
+	}
+
+	err = testDB.RevokeToken(testToken)
+	if err != nil {
+		t.Errorf("Failed to revoke token: %s", err)
+	}
+
+	testDBStruct, err := testDB.loadDB()
+	if err != nil {
+		t.Errorf("Failed to load DB: %s", err)
+	}
+	actual, isRevoked := testDBStruct.RevokedTokens[testToken]
+	if !isRevoked {
+		t.Errorf("Token not found in DB: %v", testDBStruct)
+	} else if actual.Before(rightMeow) {
+		t.Errorf("Function is not generating a new timestamp")
+	}
+}
+
+func Test_TokenIsRevoked(t *testing.T) {
+	const trueToken = "truetoken"
+	const falseToken = "falsetoken"
+	testDB, err := NewDB("fixture.json")
+	if err != nil {
+		t.Errorf("Failed to create test DB: %s", err)
+	}
+
+	shouldBeTrue, err := testDB.TokenIsRevoked(trueToken)
+	if err != nil {
+		t.Errorf("Failed check token status: %s", err)
+	}
+	shouldBeFalse, err := testDB.TokenIsRevoked(falseToken)
+	if err != nil {
+		t.Errorf("Failed check token status: %s", err)
+	}
+
+	if shouldBeTrue != true {
+		t.Errorf("Expected token to be revoked but it's not")
+	}
+	if shouldBeFalse != false {
+		t.Errorf("Expected token to NOT be revoked but it is")
+	}
 }

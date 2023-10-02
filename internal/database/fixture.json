@@ -12,5 +12,8 @@
       "body": "Supper? Dinner? Do you know about those?",
       "id": 3
     }
+  },
+  "revoked_tokens": {
+    "truetoken": "2006-01-02T15:04:05Z"
   }
 }
