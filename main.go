@@ -292,7 +292,7 @@ func main() {
 		bearer := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 
 		claims := jwt.RegisteredClaims{}
-		JWT, err := jwt.ParseWithClaims(bearer, &claims, func(t *jwt.Token) (interface{}, error) {
+		myJWT, err := jwt.ParseWithClaims(bearer, &claims, func(t *jwt.Token) (interface{}, error) {
 			return []byte(jwtSecret), nil
 		})
 		if err != nil {
@@ -300,7 +300,7 @@ func main() {
 			respondWithErr(w, 401, loginErrMsg)
 			return
 		}
-		iss, err := JWT.Claims.GetIssuer()
+		iss, err := myJWT.Claims.GetIssuer()
 		if err != nil {
 			log.Printf("Error getting Issuer from JWT claim in POST refresh: %s", err)
 			respondWithErr(w, 500, genericErrMsg)
@@ -312,9 +312,12 @@ func main() {
 			return
 		}
 
-		// TODO: check if the token is revoked
+		status, err := db.TokenIsRevoked(myJWT.Raw)
+		if status == true {
+			log.Printf("Revoked token:%s", myJWT.Raw)
+		}
 
-		subj, err := JWT.Claims.GetSubject()
+		subj, err := myJWT.Claims.GetSubject()
 		if err != nil {
 			log.Printf("Error getting Subject from JWT claim in POST refresh: %s", err)
 			respondWithErr(w, 500, genericErrMsg)
