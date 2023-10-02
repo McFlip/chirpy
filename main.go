@@ -312,9 +312,11 @@ func main() {
 			return
 		}
 
-		status, err := db.TokenIsRevoked(myJWT.Raw)
+		status, err := db.TokenIsRevoked(bearer)
 		if status == true {
-			log.Printf("Revoked token:%s", myJWT.Raw)
+			log.Printf("Revoked token:%s", bearer)
+			respondWithErr(w, 401, loginErrMsg)
+			return
 		}
 
 		subj, err := myJWT.Claims.GetSubject()
@@ -338,6 +340,17 @@ func main() {
 		}
 
 		respondWithJSON(w, 200, refreshRes{AccessToken: tok})
+	})
+
+	apiRouter.Post("/revoke", func(w http.ResponseWriter, r *http.Request) {
+		bearer := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		err := db.RevokeToken(bearer)
+		if err != nil {
+			log.Printf("Error revoking token in POST revoke")
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+		w.WriteHeader(200)
 	})
 
 	adminRouter := chi.NewRouter()
