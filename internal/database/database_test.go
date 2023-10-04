@@ -86,12 +86,15 @@ func Test_CreateChirp(t *testing.T) {
 	}
 
 	for i, body := range testBody {
-		testChirp, err := testDB.CreateChirp(body)
+		testChirp, err := testDB.CreateChirp(body, i+1)
 		if err != nil {
 			t.Errorf("Failed to create test chirp: %s", err)
 		}
 		if testChirp.Id != i+1 {
 			t.Errorf("Expected ID of %d for testChirp but got %d", i+1, testChirp.Id)
+		}
+		if testChirp.AuthorId != i+1 {
+			t.Errorf("Expected Author ID of %d for testChirp but got %d", i+1, testChirp.AuthorId)
 		}
 		if testChirp.Body != body {
 			t.Errorf("Expected testChirp body to be %q, but got %q", body, testChirp.Body)

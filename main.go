@@ -88,13 +88,20 @@ func main() {
 	})
 
 	apiRouter.Post("/chirps", func(w http.ResponseWriter, r *http.Request) {
+		JWT, err := checkAccess(r, jwtSecret)
+		if err != nil {
+			log.Printf("Access Denied in POST chirps: %s", err)
+			respondWithErr(w, 401, loginErrMsg)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		type parameters struct {
 			Body string `json:"body"`
 		}
 		decoder := json.NewDecoder(r.Body)
 		params := parameters{}
-		err := decoder.Decode(&params)
+		err = decoder.Decode(&params)
 		if err != nil {
 			log.Printf("Error decoding json body in POST chirps: %s", err)
 			respondWithErr(w, 500, genericErrMsg)
@@ -105,8 +112,14 @@ func main() {
 			respondWithErr(w, 400, err.Error())
 			return
 		}
-		chirp, err := db.CreateChirp(validated)
+		subj, err := getSubj(*JWT)
 		if err != nil {
+			log.Printf("Error getting subject from JWT in POST chirps: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+		}
+		chirp, err := db.CreateChirp(validated, subj)
+		if err != nil {
+			log.Printf("Error creating chirp in DB in POST chirps: %s", err)
 			respondWithErr(w, 500, err.Error())
 			return
 		}
@@ -237,40 +250,18 @@ func main() {
 			respondWithErr(w, 500, genericErrMsg)
 			return
 		}
-		bearer := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 
-		claims := jwt.RegisteredClaims{}
-		JWT, err := jwt.ParseWithClaims(bearer, &claims, func(t *jwt.Token) (interface{}, error) {
-			return []byte(jwtSecret), nil
-		})
+		JWT, err := checkAccess(r, jwtSecret)
 		if err != nil {
-			log.Printf("Error parsing claims: %s", err)
+			log.Println("Access Denied in PUT users")
 			respondWithErr(w, 401, loginErrMsg)
 			return
 		}
-		iss, err := JWT.Claims.GetIssuer()
-		if err != nil {
-			log.Printf("Error getting Issuer from JWT claim in PUT users: %s", err)
-			respondWithErr(w, 500, genericErrMsg)
-			return
-		}
-		if iss != accessIssuer {
-			log.Printf("Incorrect token used in PUT users: %s", iss)
-			respondWithErr(w, 401, loginErrMsg)
-			return
-		}
-		subj, err := JWT.Claims.GetSubject()
+
+		subjInt, err := getSubj(*JWT)
 		if err != nil {
 			log.Printf("Error getting Subject from JWT claim in PUT users: %s", err)
 			respondWithErr(w, 500, genericErrMsg)
-			return
-		}
-		// log.Printf("Claimed ID is %s", subj)
-		subjInt, err := strconv.Atoi(subj)
-		if err != nil {
-			log.Printf("Error casting JWT subj to int in PUT users: %s", err)
-			respondWithErr(w, 500, genericErrMsg)
-			return
 		}
 
 		updatedUser, err := db.UpdateUser(subjInt, params.Email, params.Password)
@@ -386,6 +377,43 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	}
 	w.WriteHeader(code)
 	w.Write(dat)
+}
+
+func getSubj(JWT jwt.Token) (int, error) {
+	subj, err := JWT.Claims.GetSubject()
+	if err != nil {
+		return 0, err
+	}
+	// log.Printf("Claimed ID is %s", subj)
+	subjInt, err := strconv.Atoi(subj)
+	if err != nil {
+		return 0, err
+	}
+	return subjInt, nil
+}
+
+func checkAccess(r *http.Request, jwtSecret string) (*jwt.Token, error) {
+	bearer := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+
+	claims := jwt.RegisteredClaims{}
+	JWT, err := jwt.ParseWithClaims(bearer, &claims, func(t *jwt.Token) (interface{}, error) {
+		return []byte(jwtSecret), nil
+	})
+	if err != nil {
+		log.Printf("Error parsing claims: %s", err)
+		return nil, err
+	}
+	iss, err := JWT.Claims.GetIssuer()
+	if err != nil {
+		log.Printf("Error getting Issuer from JWT claim in PUT users: %s", err)
+		return nil, err
+	}
+	if iss != accessIssuer {
+		log.Printf("Incorrect token used in PUT users: %s", iss)
+		return nil, err
+	}
+
+	return JWT, nil
 }
 
 func validateChirp(chirp string) (validatedChirp string, err error) {
