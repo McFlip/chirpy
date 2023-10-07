@@ -31,9 +31,10 @@ type DBStructure struct {
 }
 
 type User struct {
-	Id       int    `json:"id"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Id          int    `json:"id"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	IsChirpyRed bool   `json:"is_chirpy_red"`
 }
 
 var Chirp404 = errors.New("chirp not found")
@@ -167,7 +168,6 @@ func (db *DB) DelChirp(id int) error {
 // Create a new user
 func (db *DB) CreateUser(email string, pw []byte) (User, error) {
 	_, err := db.GetUserByEmail(email)
-	fmt.Println("DEBUG0")
 	if err == nil {
 		fmt.Println("ERROR user already exists")
 		err = errors.New("user already exists")
@@ -176,7 +176,6 @@ func (db *DB) CreateUser(email string, pw []byte) (User, error) {
 		fmt.Println("ERROR checking if user already exists")
 		return User{Id: -1, Email: ""}, err
 	}
-	fmt.Println("DEBUG1")
 	myDBStructure, err := db.loadDB()
 	if err != nil {
 		fmt.Println("ERROR loading DB in CreateUser")

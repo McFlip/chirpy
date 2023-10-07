@@ -29,8 +29,9 @@ type errRes struct {
 }
 
 type userRes struct {
-	Id    int    `json:"id"`
-	Email string `json:"email"`
+	Id          int    `json:"id"`
+	Email       string `json:"email"`
+	IsChirpyRed bool   `json:"is_chirpy_red"`
 }
 
 type loginRes struct {
@@ -227,8 +228,9 @@ func main() {
 
 		res := loginRes{
 			userRes: userRes{
-				Id:    user.Id,
-				Email: user.Email,
+				Id:          user.Id,
+				Email:       user.Email,
+				IsChirpyRed: user.IsChirpyRed,
 			},
 			RefreshToken: refreshToken,
 			AccessToken:  accessToken,
@@ -252,6 +254,7 @@ func main() {
 		}
 
 		JWT, err := checkAccess(r, jwtSecret)
+		log.Printf("checkAccess error: %s", err)
 		if err != nil {
 			log.Println("Access Denied in PUT users")
 			respondWithErr(w, 401, loginErrMsg)
@@ -442,12 +445,12 @@ func checkAccess(r *http.Request, jwtSecret string) (*jwt.Token, error) {
 	}
 	iss, err := JWT.Claims.GetIssuer()
 	if err != nil {
-		log.Printf("Error getting Issuer from JWT claim in PUT users: %s", err)
+		log.Printf("Error getting Issuer from JWT claim in checkAccess: %s", err)
 		return nil, err
 	}
 	if iss != accessIssuer {
-		log.Printf("Incorrect token used in PUT users: %s", iss)
-		return nil, err
+		log.Printf("Incorrect token used in checkAccess: %s", iss)
+		return JWT, errors.New("Incorrect token used in checkAccess")
 	}
 
 	return JWT, nil

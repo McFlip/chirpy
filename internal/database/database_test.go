@@ -133,14 +133,14 @@ func Test_CreateUser(t *testing.T) {
 	}
 	const userEmail = "myuser@local"
 	const userPassword = "P@ssW0rd"
-	expected := User{Id: 1, Email: userEmail}
+	expected := User{Id: 1, Email: userEmail, IsChirpyRed: false}
 
 	actual, err := testDB.CreateUser(userEmail, []byte(userPassword))
 	if err != nil {
 		t.Errorf("Failed to create test user: %s", err.Error())
 	}
 
-	if actual.Id != expected.Id || actual.Email != expected.Email {
+	if actual.Id != expected.Id || actual.Email != expected.Email || actual.IsChirpyRed != expected.IsChirpyRed {
 		t.Errorf("Expected User %v, but got %v", expected, actual)
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(actual.Password), []byte(userPassword))
