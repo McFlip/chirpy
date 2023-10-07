@@ -384,6 +384,36 @@ func main() {
 		w.WriteHeader(200)
 	})
 
+	apiRouter.Post("/polka/webhooks", func(w http.ResponseWriter, r *http.Request) {
+		type parameters struct {
+			Event string `json:"event"`
+			Data  struct {
+				UserId int `json:"user_id"`
+			} `json:"data"`
+		}
+		params := parameters{}
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&params)
+		if err != nil {
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+
+		if params.Event != "user.upgraded" {
+			w.WriteHeader(200)
+			return
+		}
+
+		err = db.UpgradeUser(params.Data.UserId)
+		if errors.Is(err, database.User404) {
+			respondWithErr(w, 404, database.User404.Error())
+			return
+		} else if err != nil {
+			respondWithErr(w, 500, genericErrMsg)
+			return
+		}
+	})
+
 	adminRouter := chi.NewRouter()
 	adminRouter.Get("/metrics", apiCfg.handlerMetrics)
 	mainRouter.Mount("/api", apiRouter)

@@ -285,3 +285,29 @@ func Test_DeleteChirp(t *testing.T) {
 		t.Errorf("Expected chirps to be length 0 but got %d", len(chirps))
 	}
 }
+
+func Test_UpgradeUser(t *testing.T) {
+	const path = "upgrade.json"
+	defer os.Remove(path)
+	testDB, err := NewDB(path)
+	if err != nil {
+		t.Errorf("Failed to create test DB: %s", err)
+	}
+	testUser, err := testDB.CreateUser("wu@tang", []byte("pw"))
+	if testUser.IsChirpyRed {
+		t.Errorf("Expected test user IsChirpyRed status to be false by default but it's true")
+	}
+
+	err = testDB.UpgradeUser(testUser.Id)
+	if err != nil {
+		t.Errorf("Failed to upgrade user: %s", err)
+	}
+
+	actual, err := testDB.GetUserByEmail(testUser.Email)
+	if err != nil {
+		t.Errorf("Failed to get user: %s", err)
+	}
+	if !actual.IsChirpyRed {
+		t.Errorf("Expected user to be on Chirpy Red status but it's not")
+	}
+}

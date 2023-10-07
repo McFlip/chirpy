@@ -38,6 +38,7 @@ type User struct {
 }
 
 var Chirp404 = errors.New("chirp not found")
+var User404 = errors.New("user not found")
 
 // ensureDB creates a new database file if it doesn't exist
 func (db *DB) ensureDB() error {
@@ -237,6 +238,29 @@ func (db *DB) UpdateUser(id int, email string, password string) (User, error) {
 	}
 
 	return updatedUser, nil
+}
+
+func (db *DB) UpgradeUser(id int) error {
+	myDBStructure, err := db.loadDB()
+	if err != nil {
+		fmt.Println("ERROR loading DB in UpradeUser")
+		return err
+	}
+
+	myUser, ok := myDBStructure.Users[id]
+	if !ok {
+		return User404
+	}
+	myUser.IsChirpyRed = true
+	myDBStructure.Users[id] = myUser
+
+	err = db.writeDB(myDBStructure)
+	if err != nil {
+		fmt.Println("ERROR writing to DB in UpgradeUser")
+		return err
+	}
+
+	return nil
 }
 
 func (db *DB) TokenIsRevoked(token string) (bool, error) {
