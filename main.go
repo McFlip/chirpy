@@ -64,6 +64,7 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 	jwtSecret := os.Getenv("JWT_SECRET")
+	polkaApiKey := os.Getenv("POLKA_API_KEY")
 
 	const filepathRoot = "."
 	const port = "8080"
@@ -385,6 +386,10 @@ func main() {
 	})
 
 	apiRouter.Post("/polka/webhooks", func(w http.ResponseWriter, r *http.Request) {
+		apiKey := strings.TrimPrefix(r.Header.Get("Authorization"), "ApiKey ")
+		if apiKey != polkaApiKey {
+			respondWithErr(w, 401, "access denied")
+		}
 		type parameters struct {
 			Event string `json:"event"`
 			Data  struct {
