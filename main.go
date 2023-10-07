@@ -301,7 +301,7 @@ func main() {
 			if errors.Is(err, database.Chirp404) {
 				respondWithErr(w, 404, err.Error())
 			} else {
-				respondWithErr(w, 500, err.Error())
+				respondWithErr(w, 500, genericErrMsg)
 			}
 			return
 		}
@@ -309,7 +309,10 @@ func main() {
 			respondWithErr(w, 403, "forbidden")
 		}
 
-		// w.WriteHeader(200)
+		err = db.DelChirp(chirpIdInt)
+		if err != nil {
+			respondWithErr(w, 500, genericErrMsg)
+		}
 	})
 
 	apiRouter.Post("/refresh", func(w http.ResponseWriter, r *http.Request) {

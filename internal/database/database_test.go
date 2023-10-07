@@ -252,3 +252,36 @@ func Test_GetChirpById(t *testing.T) {
 		t.Errorf("Expected chirp %v, but got %v", expected, actual)
 	}
 }
+
+func Test_DeleteChirp(t *testing.T) {
+	const path = "delete.json"
+	defer os.Remove(path)
+	testDB, err := NewDB(path)
+	if err != nil {
+		t.Errorf("Failed to create test DB: %s", err)
+	}
+	_, err = testDB.CreateChirp("test chirp", 1)
+	if err != nil {
+		t.Errorf("Failed to create test chirp: %s", err)
+	}
+	chirps, err := testDB.GetChirps()
+	if err != nil {
+		t.Errorf("Failed to get chirps: %s", err)
+	}
+	if len(chirps) != 1 {
+		t.Error("Failed to set starting state")
+	}
+
+	err = testDB.DelChirp(1)
+	if err != nil {
+		t.Errorf("Failed to delete chirp: %s", err)
+	}
+
+	chirps, err = testDB.GetChirps()
+	if err != nil {
+		t.Errorf("Failed to get chirps: %s", err)
+	}
+	if len(chirps) != 0 {
+		t.Errorf("Expected chirps to be length 0 but got %d", len(chirps))
+	}
+}

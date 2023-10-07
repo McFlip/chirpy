@@ -146,6 +146,24 @@ func (db *DB) GetChirpById(id int) (Chirp, error) {
 	return myChirp, nil
 }
 
+func (db *DB) DelChirp(id int) error {
+	myDBStructure, err := db.loadDB()
+	if err != nil {
+		fmt.Println("ERROR loading DB in DelChirp")
+		return err
+	}
+
+	delete(myDBStructure.Chirps, id)
+
+	err = db.writeDB(myDBStructure)
+	if err != nil {
+		fmt.Println("ERROR writing to DB in DelChirp")
+		return err
+	}
+
+	return nil
+}
+
 // Create a new user
 func (db *DB) CreateUser(email string, pw []byte) (User, error) {
 	_, err := db.GetUserByEmail(email)
