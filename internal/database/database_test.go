@@ -29,8 +29,11 @@ func Test_createNewFile(t *testing.T) {
 }
 
 func Test_loadDB(t *testing.T) {
-	expected := Chirp{Body: "I had something interesting for breakfast",
-		Id: 1}
+	expected := Chirp{
+		Body:     "I had something interesting for breakfast",
+		Id:       1,
+		AuthorId: 1,
+	}
 	testDB, err := NewDB("fixture.json")
 	if err != nil {
 		t.Errorf("Failed to create test DB: %s", err)
@@ -225,5 +228,27 @@ func Test_TokenIsRevoked(t *testing.T) {
 	}
 	if shouldBeFalse != false {
 		t.Errorf("Expected token to NOT be revoked but it is")
+	}
+}
+
+func Test_GetChirpById(t *testing.T) {
+	const id = 2
+	testDB, err := NewDB("fixture.json")
+	if err != nil {
+		t.Errorf("Failed to create test DB: %s", err)
+	}
+	expected := Chirp{
+		Id:       2,
+		Body:     "What about second breakfast?",
+		AuthorId: 2,
+	}
+
+	actual, err := testDB.GetChirpById(id)
+	if err != nil {
+		t.Errorf("Failed to get chirp: %s", err)
+	}
+
+	if actual != expected {
+		t.Errorf("Expected chirp %v, but got %v", expected, actual)
 	}
 }

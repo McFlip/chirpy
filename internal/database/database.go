@@ -36,6 +36,8 @@ type User struct {
 	Password string `json:"password"`
 }
 
+var Chirp404 = errors.New("chirp not found")
+
 // ensureDB creates a new database file if it doesn't exist
 func (db *DB) ensureDB() error {
 	file, err := os.Open(db.path)
@@ -126,6 +128,22 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	}
 	sort.Slice(chirps, func(i, j int) bool { return chirps[i].Id < chirps[j].Id })
 	return chirps, nil
+}
+
+// GetChirpById returns a chirp stuct
+func (db *DB) GetChirpById(id int) (Chirp, error) {
+	myDBStructure, err := db.loadDB()
+	if err != nil {
+		fmt.Println("ERROR loading DB in GetChirps")
+		return Chirp{}, err
+	}
+
+	myChirp, ok := myDBStructure.Chirps[id]
+	if !ok {
+		return Chirp{}, Chirp404
+	}
+
+	return myChirp, nil
 }
 
 // Create a new user

@@ -278,6 +278,40 @@ func main() {
 		respondWithJSON(w, 200, res)
 	})
 
+	apiRouter.Delete("/chirps/{chirpId}", func(w http.ResponseWriter, r *http.Request) {
+		JWT, err := checkAccess(r, jwtSecret)
+		if err != nil {
+			log.Println("Access Denied in DELETE chirps")
+			respondWithErr(w, 401, loginErrMsg)
+			return
+		}
+		subjInt, err := getSubj(*JWT)
+		if err != nil {
+			log.Printf("Error getting Subject from JWT claim in PUT users: %s", err)
+			respondWithErr(w, 500, genericErrMsg)
+		}
+		chirpId := chi.URLParam(r, "chirpId")
+		chirpIdInt, err := strconv.Atoi(chirpId)
+		if err != nil {
+			respondWithErr(w, 400, err.Error())
+			return
+		}
+		myChirp, err := db.GetChirpById(chirpIdInt)
+		if err != nil {
+			if errors.Is(err, database.Chirp404) {
+				respondWithErr(w, 404, err.Error())
+			} else {
+				respondWithErr(w, 500, err.Error())
+			}
+			return
+		}
+		if myChirp.AuthorId != subjInt {
+			respondWithErr(w, 403, "forbidden")
+		}
+
+		// w.WriteHeader(200)
+	})
+
 	apiRouter.Post("/refresh", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		bearer := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")

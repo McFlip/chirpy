@@ -2,15 +2,18 @@
   "chirps": {
     "1": {
       "body": "I had something interesting for breakfast",
-      "id": 1
+      "id": 1,
+      "author_id": 1
     },
     "2": {
       "body": "What about second breakfast?",
-      "id": 2
+      "id": 2,
+      "author_id": 2
     },
     "3": {
       "body": "Supper? Dinner? Do you know about those?",
-      "id": 3
+      "id": 3,
+      "author_id": 1
     }
   },
   "revoked_tokens": {
